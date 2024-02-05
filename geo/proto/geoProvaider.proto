@@ -1,0 +1,25 @@
+    syntax = "proto3";
+
+    package geoprovider;
+
+    option go_package = "./geo_provider";
+
+    message RequestAddressSearch {
+        string query = 1;
+    }
+
+    message RequestAddressGeocode {
+        string lat = 1;
+        string lng = 2;
+    }
+
+    message RespAddress {
+        string geolat = 1;
+        string geolon = 2;
+        string result = 3;
+    }
+
+    service GeoProviderGRPC {
+        rpc AddressSearchGRPC(RequestAddressSearch) returns (RespAddress){}
+        rpc AddressGeoCodeGRPC(RequestAddressGeocode) returns (RespAddress){}
+    }

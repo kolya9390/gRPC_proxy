@@ -1,0 +1,16 @@
+version: '3'
+services:
+  client_app:
+    build: .
+    ports:
+      - "8080:8080"
+    container_name: app_cleint
+    volumes:
+      - "./public/swagger.json:/client_app/public/swagger.json"
+      - ".env:/client_app/.env"
+    networks:
+      - myNetwork
+
+networks:
+  myNetwork:
+    name: local
