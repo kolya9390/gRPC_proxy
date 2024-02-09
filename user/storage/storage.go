@@ -3,6 +3,7 @@ package storage
 import (
 	"context"
 	"errors"
+	"log"
 
 	"github.com/jmoiron/sqlx"
 )
@@ -22,7 +23,7 @@ CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
 	name TEXT,
     email TEXT,
-    pass_hash TEXT
+    password TEXT
 );`
 
 	_, err := d.db.Exec(sqlStatementUser)
@@ -32,7 +33,7 @@ CREATE TABLE IF NOT EXISTS users (
 // Получение пользователя по ID
 func (s *UserRepo) GetUserIDs(userID int64) (User, error) {
 	var user User
-	err := s.db.Get(&user, `SELECT id, name, email FROM users WHERE id = $1`, userID)
+	err := s.db.Get(&user, `SELECT id, name, email, password FROM users WHERE id = $1`, userID)
 
 	if err != nil {
 		return User{},err
@@ -43,7 +44,7 @@ func (s *UserRepo) GetUserIDs(userID int64) (User, error) {
 // Получение списка всех пользователей
 func (s *UserRepo) GetUsers() ([]User, error) {
 	var users []User
-	err := s.db.Select(&users, `SELECT id, name, email FROM users`)
+	err := s.db.Select(&users, `SELECT id, name, email, password  FROM users`)
 	if err != nil {
 		return nil, err
 	}
@@ -59,6 +60,7 @@ func (s *UserRepo) AddUser(ctx context.Context,name, email string, passHash []by
 	var count int
     err := s.db.QueryRowx("SELECT COUNT(*) FROM users WHERE email = $1", email).Scan(&count)
     if err != nil {
+		log.Println()
         return 0, err
     }
     if count > 0 {
@@ -67,7 +69,7 @@ func (s *UserRepo) AddUser(ctx context.Context,name, email string, passHash []by
     }
 
 	/// Если пользовотель с такой почтой уже есть , то не надо добавлять его еще раз!! фикс
-	err = s.db.QueryRowx("INSERT INTO users (name, email, pass_hash) VALUES ($1, $2, $3) RETURNING id",name, email, passHash).Scan(&id)
+	err = s.db.QueryRowx("INSERT INTO users (name, email, password) VALUES ($1, $2, $3) RETURNING id",name, email, passHash).Scan(&id)
 	if err != nil {
 		return 0, err
 	}

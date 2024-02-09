@@ -23,7 +23,7 @@ func (us *UserService) GetUserIDs(id int64) (User, error) {
         return User{},err
     }
 
-    return User{user.ID,user.Name,user.Email},nil
+    return User{user.ID,user.Name,user.Email,user.Password},nil
 }
 
 func (us *UserService) GetAllUser() ([]User, error) {
@@ -37,7 +37,7 @@ func (us *UserService) GetAllUser() ([]User, error) {
     }
 
     for _, user := range users{
-        result = append(result, User{user.ID,user.Name,user.Email})
+        result = append(result, User{user.ID,user.Name,user.Email,user.Password})
     }
 
     return result,nil

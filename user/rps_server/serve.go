@@ -88,7 +88,11 @@ func (us *UserServiceGRPC) GetUserProfileIDs(ctx context.Context, user_id *userA
 		return nil, err
 	}
 
-	return &userApp.ResponseUser{UserId: user.ID, Name: user.Name, Email: user.Email}, nil
+	return &userApp.ResponseUser{
+		UserId: user.ID, 
+		Name: user.Name, 
+		Email: user.Email,
+		Password: string(user.Password)}, nil
 
 }
 
@@ -108,6 +112,7 @@ func (us *UserServiceGRPC) GetListUser(ctx context.Context,empty *userApp.Empty)
 				UserId: user.ID,
 				Name:   user.Name,
 				Email:  user.Email,
+				Password: string(user.Password),
 			})
 	}
 
