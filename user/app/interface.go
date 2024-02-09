@@ -1,12 +1,15 @@
 package app
 
+import "context"
 
 type UserProvider interface {
-	GetUserIDs(id string) (User, error)
+	GetUserIDs(user_id int64) (User, error)
 	GetAllUser() ([]User, error)
+	RegisterNewUser(ctx context.Context,name, email string, password string) (int64, error)
 }
 
 type User struct {
-	Email          string `json:"email"`
-	Password       string `json:"password"`
+	ID		 int64
+	Name	 string	`json:"name"`
+	Email    string `json:"email"`
 }

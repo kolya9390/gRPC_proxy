@@ -1,52 +1,13 @@
-package rpcserver
+package grpcauth
 
 import (
-	"auth/app"
-	grpcauth "auth/rps_server/grpcAuth"
+	authService "auth/protoc/gen"
 	"context"
-	"log"
-	"net"
-	"net/rpc"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
-
-
-
-func NewAuthService(authservice app.Auther, port int) *AuthService {
-
-	gRPCServer := grpc.NewServer()
-
-	grpcauth.Register(gRPCServer, authservice)
-
-	return &AuthService{gRPCServer: gRPCServer}
-}
-
-func (as *AuthService) Stop() {
-	const op = "grpcapp.Stop"
-
-	log.Println("stop")
-
-	as.gRPCServer.GracefulStop()
-}
-
-func (as *AuthService) StartServer() error {
-
-
-	listen, err := net.Listen("tcp",":1237")
-	if err != nil {
-		log.Printf("Eroor Listen %v", err)
-		return err
-	}
-	defer listen.Close()
-
-	log.Printf("%s", listen)
-
-	log.Println("RPC сервер запущен и прослушивает порт :1237")
-	rpc.Accept(listen)
-
-	return nil
-}
 
 type ServerAPI struct {
 	auth Auth

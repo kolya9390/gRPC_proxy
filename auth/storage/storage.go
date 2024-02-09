@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"github.com/jmoiron/sqlx"
 )
 
@@ -8,55 +9,28 @@ type UserRepo struct {
 	db *sqlx.DB
 }
 
-func NewGeoRepositoryDB(db *sqlx.DB) *UserRepo {
+func NewAuthRepositoryDB(db *sqlx.DB) *UserRepo {
 	return &UserRepo{db: db}
 }
 
-// создание таблицы
-func (d *UserRepo) ConnectToDB() error {
+func (s *UserRepo) AddUser(ctx context.Context, email string, passHash []byte) (int64, error) {
 
-	sqlStatementUser := `
-CREATE TABLE IF NOT EXISTS user (
-    id SERIAL PRIMARY KEY,
-    email text,
-	password text
-
-);`
-
-	_, err := d.db.Exec(sqlStatementUser)
+	var id int64
+	err := s.db.QueryRowx("INSERT INTO users (email, pass_hash) VALUES ($1, $2) RETURNING id", email, passHash).Scan(&id)
 	if err != nil {
-		return err
+		return 0, err
 	}
-
-	return nil
-
+	return id, nil
 }
 
-func (s *UserRepo) GetUserIDs(userID string) (User, error) {
+func (s *UserRepo) GetUser(ctx context.Context, email string) (User, error) {
 
 	var user User
+	err := s.db.Get(&user, `SELECT email, password FROM users WHERE email = $1`, email)
 
-	err := s.db.Select(&user, `
-	SELECT email as Email, password as Password 
-	FROM user
-	WHERE id  LIKE $1`, "%"+userID+"%")
 	if err != nil {
 		return User{}, err
 	}
 
 	return user, nil
-}
-
-
-func (s *UserRepo) GetUsers() ([]User,error){
-	var user []User
-
-	err := s.db.Select(&user,`
-	SELECT email as Email, password as Password 
-	FROM user`)
-	if err != nil {
-		return nil, err
-	}
-
-	return user,nil
 }

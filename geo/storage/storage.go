@@ -39,8 +39,6 @@ func NewGeoRedis(client *redis.Client) Cacher {
 
 func NewGeoRepositoryProxy(repo geoRepository,cache Cacher) *GeoProxy {
 
-	
-
     return &GeoProxy{
         geoRepo: repo,
         cache:      cache,

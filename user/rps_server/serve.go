@@ -14,6 +14,8 @@ import (
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 type UserService struct {
@@ -25,11 +27,11 @@ type UserServiceGRPC struct {
 	userApp.UnimplementedUserServiceServer
 }
 
-func NewGeoServis() *UserService{
+func NewUserServis() *UserService {
 	return &UserService{}
 }
 
-func (us *UserService) StartServer(port string) error {
+func (us *UserService) StartServer() error {
 
 	config := config.NewAppConf("server_app/.env")
 
@@ -37,24 +39,21 @@ func (us *UserService) StartServer(port string) error {
 	connstr := fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
 		config.DB.Host, config.DB.Port, config.DB.User, config.DB.Password, config.DB.Name)
 
-		log.Fatal(connstr)
-
 	db, err := sqlx.Open("postgres", connstr)
 	if err != nil {
 		log.Fatalf("Error connecting to the database: %s", err)
 	}
-
 	time.Sleep(time.Second * 3)
 	// Проверка соединения с базой данных
 	if err := db.Ping(); err != nil {
-		log.Printf("Error pinging the database: %s", err)
+		log.Fatalf("Error pinging the database: %s", err)
 	}
 
 	defer db.Close()
 
-	postgresDB := storage.NewGeoRepositoryDB(db)
+	postgresDB := storage.NewUserRepositoryDB(db)
 
-	us.userProvider = app.NewGeoProvider(postgresDB)
+	us.userProvider = app.NewUserProvider(postgresDB)
 
 	err = postgresDB.ConnectToDB()
 
@@ -69,47 +68,72 @@ func (us *UserService) StartServer(port string) error {
 	}
 	defer listen.Close()
 
+	log.Printf("RPC типа %s сервер запущен и прослушивает порт :%s", config.RPCServer.Type, config.RPCServer.Port)
 
+	//
 	grpcServer := grpc.NewServer()
-		userApp.RegisterUserServiceServer(grpcServer, 
-			&us.UserServiceGRPC)
-		grpcServer.Serve(listen)
+	userApp.RegisterUserServiceServer(grpcServer,
+		&us.UserServiceGRPC)
+	grpcServer.Serve(listen)
 
 	return nil
 }
 
-func (us *UserService) GetUserProfileIDs(ctx context.Context,user_id *userApp.RequestUserID) (*userApp.ResponseUser, error)  {
+func (us *UserServiceGRPC) GetUserProfileIDs(ctx context.Context, user_id *userApp.RequestUserID) (*userApp.ResponseUser, error) {
 
-	user , err := us.userProvider.GetUserIDs(user_id.UserId)
+	user, err := us.userProvider.GetUserIDs(user_id.GetUserId())
 
 	if err != nil {
 		log.Println(err)
-		return nil,err
+		return nil, err
 	}
 
-	return &userApp.ResponseUser{Email: user.Email,Password: user.Password},nil
-    
+	return &userApp.ResponseUser{UserId: user.ID, Name: user.Name, Email: user.Email}, nil
+
 }
 
+func (us *UserServiceGRPC) GetListUser(ctx context.Context,empty *userApp.Empty) (*userApp.ResponseListUsers, error) {
 
-func (us *UserService) GetListUser(context.Context, *userApp.Empty) (*userApp.ResponseListUsers, error)  {
-
-	var respUsers *userApp.ResponseListUsers
+	respUsers := &userApp.ResponseListUsers{}
 
 	users, err := us.userProvider.GetAllUser()
 	if err != nil {
 		log.Println(err)
-		return nil,err
+		return nil, err
 	}
 
-	for _, user := range users{
-		respUsers.Users = append(respUsers.Users, 
+	for _, user := range users {
+		respUsers.Users = append(respUsers.Users,
 			&userApp.ResponseUser{
-				Email: user.Email,
-				Password: user.Password,
-				}) 
+				UserId: user.ID,
+				Name:   user.Name,
+				Email:  user.Email,
+			})
 	}
 
-	return respUsers,nil
-		
+	return respUsers, nil
+
+}
+
+func (us *UserServiceGRPC) Register(ctx context.Context, in *userApp.RegisterRequest) (*userApp.RegisterResponse, error) {
+
+	if in.Email == "" {
+		return nil, status.Error(codes.InvalidArgument, "email is required")
 	}
+
+	if in.Password == "" {
+		return nil, status.Error(codes.InvalidArgument, "password is required")
+	}
+
+	if in.Name == "" {
+		return nil, status.Error(codes.InvalidArgument, "name is required")
+	}
+
+	userID, err := us.userProvider.RegisterNewUser(ctx, in.GetName(), in.GetEmail(), in.GetPassword())
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &userApp.RegisterResponse{UserId: userID}, nil
+}

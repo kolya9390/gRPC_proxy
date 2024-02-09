@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"net/rpc"
-	"net/rpc/jsonrpc"
 	"time"
 
 	"github.com/go-redis/redis"
@@ -22,12 +20,8 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-type GeoServiceRPC struct {
-	geoProvider app.GeoProvider
-}
 
 type GeoService struct {
-	GeoServiceRPC
 	GeoProviderGRPCServer
 }
 
@@ -37,16 +31,12 @@ type GeoProviderGRPCServer struct {
 	geo_provider.UnimplementedGeoProviderGRPCServer
 }
 
-func RegisterGRPC(gRPC *grpc.Server) {
-	geo_provider.RegisterGeoProviderGRPCServer(gRPC, &GeoProviderGRPCServer{})
-}
 
 func NewGeoServis() *GeoService {
-	return &GeoService{
-	}
+	return &GeoService{}
 }
 
-func (gs *GeoService) StartServer(port string) error {
+func (gs *GeoService) StartServer() error {
 
 	config := config.NewAppConf("server_app/.env")
 
@@ -83,7 +73,6 @@ func (gs *GeoService) StartServer(port string) error {
 		log.Printf("Error conect DB %s", err)
 	}
 
-	gs.GeoServiceRPC.geoProvider = app.NewGeoProvider(storageDB,sevisDAdata)
 	gs.GeoProviderGRPCServer.geoProvider = app.NewGeoProvider(storageDB,sevisDAdata)
 	
 	//
@@ -109,43 +98,8 @@ func (gs *GeoService) StartServer(port string) error {
 	return nil
 }
 
-func (gs *GeoServiceRPC) AddressSearchRPC(query RequestAddressSearch, reply *[]*Address) error {
-	addresses, err := gs.geoProvider.AddressSearch(query.Query)
-	if err != nil {
-		log.Printf("Error AddressSearch: %v", err)
-		return err
-	}
 
-	for _, adres := range addresses {
-		*reply = append(*reply, &Address{
-			GeoLat: adres.GeoLat,
-			GeoLon: adres.GeoLon,
-			Result: adres.Result,
-		})
 
-	}
-
-	return nil
-}
-
-func (gs *GeoServiceRPC) AddressGeoCodeRPC(geocode RequestAddressGeocode, reply *[]*Address) error {
-	addresses, err := gs.geoProvider.GeoCode(geocode.Lat, geocode.Lng)
-	if err != nil {
-		log.Printf("Error AddressGeoCode: %v", err)
-		return err
-	}
-	// Просто присваиваем новое значение reply через косвенное разыменование
-	for _, adres := range addresses {
-		*reply = append(*reply, &Address{
-			GeoLat: adres.GeoLat,
-			GeoLon: adres.GeoLon,
-			Result: adres.Result,
-		})
-
-	}
-
-	return nil
-}
 
 func (gs *GeoProviderGRPCServer) AddressSearchGRPC(ctx context.Context, req *geo_provider.RequestAddressSearch) (*geo_provider.RespAddress, error) {
 

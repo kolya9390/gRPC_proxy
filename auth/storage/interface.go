@@ -1,11 +1,14 @@
 package storage
 
-type UserRepository interface {
-	GetUserIDs(userID string) (User,error) // Вставка в DB's
-	GetUsers() ([]User, error) // Получаем данные из базы
+import "context"
+
+type AuthRepository interface {
+	// Вставка в DB's
+	AddUser(ctx context.Context, email string, passHash []byte) (int64, error)
+	GetUser(ctx context.Context, email string) (User, error)
 }
 
 type User struct {
-	Email          string `json:"email"`
-	Password       string `json:"password"`
+	Email    string
+	PassHash []byte
 }

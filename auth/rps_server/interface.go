@@ -18,3 +18,9 @@ type RequestAddressGeocode struct {
 	Lat string `json:"lat"`
 	Lng string `json:"lng"`
 }
+
+type User struct {
+	ID       int64
+	Email    string
+	PassHash []byte
+}
