@@ -2,63 +2,60 @@ package rpcserver
 
 import (
 	"auth/app"
-	grpcauth "auth/rps_server/grpcAuth"
+	"auth/config"
+	pb "auth/protoc/gen/auth"
+	"auth/service/user"
 	"context"
+	"fmt"
 	"log"
 	"net"
-	"net/rpc"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
-
-
-func NewAuthService(authservice app.Auther, port int) *AuthService {
-
-	gRPCServer := grpc.NewServer()
-
-	grpcauth.Register(gRPCServer, authservice)
-
-	return &AuthService{gRPCServer: gRPCServer}
+type AurhService struct {
+	AurhServiceGRPC
 }
 
-func (as *AuthService) Stop() {
-	const op = "grpcapp.Stop"
-
-	log.Println("stop")
-
-	as.gRPCServer.GracefulStop()
+type AurhServiceGRPC struct {
+	auther app.Auther
+	pb.UnimplementedAuthServer
+	
 }
 
-func (as *AuthService) StartServer() error {
+func NewAurhServis() *AurhService {
+	return &AurhService{}
+}
 
+func (as *AurhService) StartServer() error {
 
-	listen, err := net.Listen("tcp",":1237")
+	config := config.NewAppConf("server_app/.env")
+
+	listen, err := net.Listen("tcp", fmt.Sprintf(":%s", config.RPCServer.Port))
 	if err != nil {
 		log.Printf("Eroor Listen %v", err)
 		return err
 	}
 	defer listen.Close()
 
-	log.Printf("%s", listen)
+	log.Printf("RPC типа %s сервер запущен и прослушивает порт :%s", config.RPCServer.Type, config.RPCServer.Port)
+	//
+	user_Service := user.NewGeoClient()
 
-	log.Println("RPC сервер запущен и прослушивает порт :1237")
-	rpc.Accept(listen)
+	as.auther = app.NewAuthProvider(user_Service)
+
+	//
+	grpcServer := grpc.NewServer()
+	pb.RegisterAuthServer(grpcServer,
+		&as.AurhServiceGRPC)
+	grpcServer.Serve(listen)
 
 	return nil
 }
 
-type ServerAPI struct {
-	auth Auth
-	authService.UnimplementedAuthServer
-}
-
-func Register(gRPCServer *grpc.Server, auth Auth) {
-	authService.RegisterAuthServer(gRPCServer, &ServerAPI{auth: auth})
-}
-
-
-func (s *ServerAPI) Login(ctx context.Context, in *authService.LoginRequest) (*authService.LoginResponse, error) {
+func (s *AurhServiceGRPC) Login(ctx context.Context, in *pb.LoginRequest) (*pb.LoginResponse, error) {
 
 	if in.Email == "" {
 		return nil, status.Error(codes.InvalidArgument, "email is required")
@@ -68,36 +65,23 @@ func (s *ServerAPI) Login(ctx context.Context, in *authService.LoginRequest) (*a
 		return nil, status.Error(codes.InvalidArgument, "password is required")
 	}
 
-	if in.GetAppId() == 0 {
-		return nil, status.Error(codes.InvalidArgument, "app_id is required")
-	}
-
-	token, err := s.auth.Login(ctx, in.GetEmail(), in.GetPassword())
+	token, err := s.auther.Login(ctx, in.GetEmail(), in.GetPassword())
 	if err != nil {
 
-
-		return nil, status.Error(codes.Internal, "failed to login")
+		return nil, err
+		//status.Error(codes.Internal, "failed to login")
 	}
 
-	return &authService.LoginResponse{Token: token},err
+	return &pb.LoginResponse{Token: token}, err
 }
 
+func (s *AurhServiceGRPC) Register(ctx context.Context, in *pb.RegisterRequest) (*pb.RegisterResponse, error) {
 
-func (s *ServerAPI) RegisterNewUser(ctx context.Context, in *authService.RegisterRequest) (*authService.RegisterResponse, error) {
-
-	if in.Email == "" {
-		return nil, status.Error(codes.InvalidArgument, "email is required")
-	}
-
-	if in.Password == "" {
-		return nil, status.Error(codes.InvalidArgument, "password is required")
-	}
-
-	userID, err := s.auth.RegisterNewUser(ctx, in.GetEmail(), in.GetPassword())
+	userID, err := s.auther.RegisterNewUser(ctx,in.Name,in.Email,in.Password)
 
 	if err != nil {
 		return nil, err
 	}
 
-	return &authService.RegisterResponse{UserId: userID},nil
+	return &pb.RegisterResponse{UserId: userID}, nil
 }

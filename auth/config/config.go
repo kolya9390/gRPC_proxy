@@ -86,5 +86,10 @@ func NewAppConf(envPath string /*"server_app/.env"*/) AppConf {
 			Host:     env["DB_HOST"],
 			Port:     env["DB_PORT"],
 		},
+		Token: Token{
+			AccessSecret: env["ACCEC_SECRET"],
+			AccessTTL: 10,
+		},
+			
 	}
 }

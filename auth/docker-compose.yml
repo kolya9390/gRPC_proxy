@@ -9,10 +9,7 @@ services:
       - ".env:/server_app/.env"
     networks:
       - myNetwork 
-      - myNetworkDB
 
 networks:
-  myNetworkDB:
-    
   myNetwork:
     name: local

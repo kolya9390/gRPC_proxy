@@ -1,0 +1,38 @@
+syntax="proto3";
+
+package userApp;
+
+option go_package = "./userApp";
+
+message RequestUserID {
+    int64 user_id = 1;
+}
+
+message Empty {}
+
+message ResponseListUsers {
+    repeated ResponseUser users = 1;
+}
+
+message ResponseUser {
+    int64  user_id = 1;
+    string email = 2;
+    string name = 3;
+    string password = 4;
+}
+
+service UserService {
+    rpc GetUserProfileIDs (RequestUserID) returns (ResponseUser);
+    rpc GetListUser (Empty) returns (ResponseListUsers);
+    rpc Register(RegisterRequest) returns (RegisterResponse);
+}
+
+message RegisterRequest{
+    string name = 1;
+    string email = 2;
+    string password = 3;
+}
+
+message RegisterResponse {
+ int64 user_id = 1;
+}

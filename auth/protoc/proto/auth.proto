@@ -9,10 +9,6 @@ service Auth {
    rpc Login(LoginRequest) returns (LoginResponse);
 }
 
-message RegisterRequest{
-    string email = 1;
-    string password = 2;
-}
 
 message RegisterResponse {
  int64 user_id = 1;
@@ -21,9 +17,14 @@ message RegisterResponse {
 message LoginRequest {
     string email = 1;
     string password = 2;
-    int32 app_id = 3;
   }
 
   message LoginResponse {
     string token = 1;
   }
+
+  message RegisterRequest{
+    string name = 1;
+    string email = 2;
+    string password = 3;
+}
