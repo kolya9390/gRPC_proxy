@@ -1,4 +1,4 @@
-package rpcclient
+package geo_client
 
 type GeoClient interface {
 	SearchGeoAdres(query RequestAddressSearch) []Address

@@ -17,7 +17,7 @@ func NewToken(user User) (string, error) {
 
 	cfg := config.NewAppConf("server_app/.env")
 
-	token := jwt.New(jwt.SigningMethodHS512)
+	token := jwt.New(jwt.SigningMethodHS256)
 
 	claims := token.Claims.(jwt.MapClaims)
 

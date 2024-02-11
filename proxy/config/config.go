@@ -56,7 +56,7 @@ type Token struct {
 }
 
 
-func NewAppConf(envPath string /*"server_app/.env"*/) AppConf {
+func NewAppConf(envPath string /*"client_app/.env"*/) AppConf {
 
 	env, err := godotenv.Read(envPath)
 

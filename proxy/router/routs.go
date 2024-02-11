@@ -1,15 +1,19 @@
 package router
 
 import (
-	"encoding/json"
-	"log"
 	"net/http"
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
+	handler_auth "github.com/kolya9390/gRPC_GeoProvider/client_Proxy/handlers/auth"
+	handler_geo "github.com/kolya9390/gRPC_GeoProvider/client_Proxy/handlers/geo"
+	handler_user "github.com/kolya9390/gRPC_GeoProvider/client_Proxy/handlers/user"
 	reverproxy "github.com/kolya9390/gRPC_GeoProvider/client_Proxy/infrastructure/reverProxy"
 	swaggerui "github.com/kolya9390/gRPC_GeoProvider/client_Proxy/infrastructure/swaggerUI"
-	rpcclient "github.com/kolya9390/gRPC_GeoProvider/client_Proxy/servis/rpc_client"
+	auth_token_midw "github.com/kolya9390/gRPC_GeoProvider/client_Proxy/middleware/auth"
+	auth_client "github.com/kolya9390/gRPC_GeoProvider/client_Proxy/servis/rpc_client/auth"
+	geo_client "github.com/kolya9390/gRPC_GeoProvider/client_Proxy/servis/rpc_client/geo"
+	user_client "github.com/kolya9390/gRPC_GeoProvider/client_Proxy/servis/rpc_client/user"
 )
 
 func NewApiRouter( /*RPC CLIENT*/ ) http.Handler {
@@ -27,87 +31,40 @@ func NewApiRouter( /*RPC CLIENT*/ ) http.Handler {
 		http.StripPrefix("/public/", http.FileServer(http.Dir("./client_app/public"))).ServeHTTP(w, r)
 	})
 
-	// API
-	r.Route("/api", func(r chi.Router) {
-		//	geo := controllers.GeoController
+	// handlers
 
-		r.Post("/address/search", func(w http.ResponseWriter, r *http.Request) {
-			var requestBody RequestAddressSearch
+	geo_handler := handler_geo.NewGeoHandler(geo_client.NewGeoClient())
+	user_handler := handler_user.NewUserHandler(user_client.NewUserClient())
+	auth_handler := handler_auth.NewAuthHandler(auth_client.NewUserClient())
 
-			if err := json.NewDecoder(r.Body).Decode(&requestBody); err != nil {
-				log.Println("Decoder Body")
-				return
-			}
 
-			client := rpcclient.NewGeoClient()
 
-			addresses := client.SearchGeoAdres(rpcclient.RequestAddressSearch(requestBody))
-			var adreses_resp []Address
-			for _,adres := range addresses{
-				adreses_resp = append(adreses_resp, Address(adres))
-			}
-			response := ResponseAddress{
-				Addresses: adreses_resp,
-			}
+		// API
+		r.Route("/api", func(r chi.Router) {
+			//	geo := controllers.GeoController
 
-			// Конвертируйте объект ResponseAddress в JSON
-			jsonResponse, err := json.Marshal(response)
-			if err != nil {
-				log.Println("Error marshalling JSON:", err)
-				http.Error(w, "Failed to marshal JSON response", http.StatusInternalServerError)
-				return
-			}
 
-			w.WriteHeader(http.StatusOK)
-			_, err = w.Write(jsonResponse)
-			if err != nil {
-				log.Println("Error writing JSON response:", err)
-				return
-			}
+			r.Post("/auth/register", auth_handler.Registeretion)
 
+			r.Post("/auth/login", auth_handler.Login)
+
+			// Group Adress
+			r.Route("/address", func(r chi.Router) {
+
+				r.Use(auth_token_midw.TokenAuthMiddleware)
+				r.Post("/search", geo_handler.SearchAPI)
+
+				r.Post("/geocode", geo_handler.GeocodeAPI)
+
+			})
+
+			r.Route("/user",func(r chi.Router) {
+				r.Use(auth_token_midw.TokenAuthMiddleware)
+				r.Get("/profile", user_handler.GetUser)
+				r.Get("/list", user_handler.GetUsers)
+
+			})
 		})
-
-		r.Post("/address/geocode", func(w http.ResponseWriter, r *http.Request) {
-			var requestBody RequestAddressGeocode
-
-			if err := json.NewDecoder(r.Body).Decode(&requestBody); err != nil {
-				log.Println("Decoder Body")
-				return
-			}
-
-			client := rpcclient.NewGeoClient()
-
-			addresses := client.GeoCoder(rpcclient.RequestAddressGeocode(requestBody))
-			var adreses_resp []Address
-			for _,adres := range addresses{
-				adreses_resp = append(adreses_resp, Address(adres))
-			}
-			response := ResponseAddress{
-				Addresses: adreses_resp,
-			}
-
-			// Конвертируйте объект ResponseAddress в JSON
-			jsonResponse, err := json.Marshal(response)
-			if err != nil {
-				log.Println("Error marshalling JSON:", err)
-				http.Error(w, "Failed to marshal JSON response", http.StatusInternalServerError)
-				return
-			}
-
-			w.WriteHeader(http.StatusOK)
-			_, err = w.Write(jsonResponse)
-			if err != nil {
-				log.Println("Error writing JSON response:", err)
-				return
-			}
-
-		})
-
-		// Group Adress
-		r.Route("/address", func(r chi.Router) {
-
-		})
-	})
 
 	return r
 }
